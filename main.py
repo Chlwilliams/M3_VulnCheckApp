@@ -4,56 +4,56 @@ from bandit_check import SecurityCheck
 from flake8_check import CodeCheck
 from LLM_check import AI_Code_Review
 
-
-
 def main():
-    st.title("Milestone 3: Analyzer tool")
+    st.title("Code Analyzer Tool")
 
-    with st.form(key="raw_code"):
-        writeinCode = st.text_area("Enter code here")
-        code = st.file_uploader(label="Upload", type="py")
-        submit_button = st.form_submit_button(label="Analyze")
+    with st.form(key="code_form"):
+        code_input = st.text_area("Enter Python code:")
+        uploaded_file = st.file_uploader("Or upload a `.py` file:", type="py")
+        ai_review_enabled = st.checkbox("AI Code Review", value=False, help="Enable this for an automated review of your code.")
+        submit_button = st.form_submit_button("Analyze")
 
-        if submit_button:
-            if (code is not None) or (writeinCode is not None):
-                st.success("Code succesfully uploaded")
-                st.checkbox("AI Code Review", value=False, disabled=False, key="ai_code_review")
-                st.warning("May take time if the code is large")
-            else:
-                st.warning("Please upload a file or enter code, not both.")
+    if submit_button:
+        if not uploaded_file and not code_input:
+            st.warning("Please provide code either by uploading a file or pasting it.")
+            return
+
+        st.success("Code successfully uploaded.")
+        st.info("Note: Larger code files may take longer time to recieve results.")
+        code_str = uploaded_file.read().decode("utf-8") if uploaded_file else code_input
+
+        with st.expander("Original Code"):
+            st.code(code_str, language="python")
 
 
+        tab1, tab2, tab3, tab4 = st.tabs(["Metrics", "Bandit", "Flake8", "AI-Suggestion"])
 
-        if submit_button and (code is not None or writeinCode):
+        with tab1:
+            st.subheader("Code Metrics")
+            metrics = Get_Code_Metrics(code_str)
+            metrics.basic_analysis()
+            metrics.maintainiability()
+            metrics.hals_metrics()
 
-            if code:
-                r_code = code.read().decode('utf-8')
-            if writeinCode:
-                r_code = writeinCode
-            with st.expander("Original Code"):
-                st.code(r_code, language='python')
+        with tab2:
+            bandit = SecurityCheck(code_str)
+            security_issues = bandit.securityIssue()
 
-            tb1, tb2, tb3, tb4 = st.tabs(["Metrics", "Bandit", "Flake8", "Fix Suggestion"])
-            
+        with tab3:
+            flake8 = CodeCheck(code_str)
+            flake8_issues = flake8.codeIssues()
 
-            with tb1:
-                basic_analyzer =  Get_Code_Metrics(r_code)
-                basic_analyzer.basic_analysis()
-                basic_analyzer.maintainiability()
-                basic_analyzer.hals_metrics()
-
-            with tb2:
-                bandit_data = SecurityCheck(r_code)
-                testSecurity = bandit_data.securityIssue()
-
-            with tb3: 
-                flake8_data = CodeCheck(r_code)
-                testFlake8 = flake8_data.codeIssues()
-            with tb4:
+        with tab4:
+            st.subheader("AI Code Review")
+            if ai_review_enabled:
                 ai_code = AI_Code_Review()
-                testAI = ai_code.generate_response(testSecurity)
-            
-
+                ai_feedback = ai_code.generate_response(security_issues)
+                if ai_feedback == None:
+                    st.warning("No issues found in the code.")
+                else:
+                    st.write(ai_feedback)
+            else:
+                st.info("AI Code Review is disabled.")
 
 if __name__ == "__main__":
     main()
